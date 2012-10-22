@@ -1,0 +1,4 @@
+C:\UofIWork\UofIWorkWIN\Methow ATM-TKS-20120601.mdb
+SELECT * FROM [00_Temperature Result 2009-TG] WHERE id<=2
+SELECT * FROM [00_Temperature Result 2010-TG] WHERE id<=3
+SELECT * FROM [00_Temperature Result 6_16 - 12_31_2011-TG] WHERE id<=4

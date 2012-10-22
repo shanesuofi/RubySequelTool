@@ -1,0 +1,3 @@
+C:\UofIWork\UofIWorkWIN\Methow ATM-TKS-20120601.mdb
+
+SELECT * FROM [00_Temperature Result 2009-TG] WHERE id<=2

@@ -27,17 +27,15 @@ class AccessDb
   def query(sql)
     @dataset = @database[sql]   #Take SQL string and connect it to a DB
     #puts("Datset", dataset)
-    @fields = []                #Create blank array of field/column names
+    @fields = Array.new         #Create blank array of field/column names
     @fields = @dataset.columns  #Gets table field/column names
     #print("Fields", @fields, "\n") #debug  
     @fieldCount = @fields.length
-    
-    @data = @dataset.all  #Executes SQL
 
     begin
       @data = @dataset.all  #Executes SQL
       rescue
-        @data = []
+        @data = Array.new
     end
   end
 
@@ -66,7 +64,7 @@ def showTable(db, flag)
     when "p" then print("*** Records *** \n", rows) #debug
   end
 end
-
+#-----------------------------------------------------------------------------
 # Write results of Access DB query to a file.
 def writeTable(outf, db)
   fieldNames = db.fields
@@ -76,51 +74,70 @@ def writeTable(outf, db)
   #outf.puts("*** Records *** \n", rows) # debug
   outf.puts(rows)
 end
-
-#Converts a table from SQL to a hash for entry into CouchDB. 
-def tableConvert(fieldNames, rows)
+#-----------------------------------------------------------------------------
+# Creates an SQL query to get all the records from a table.
+def makeQueryTableAll(tableName)
+  #sql = "SELECT * FROM [" << tableName << "]"
+  sql = "SELECT * FROM [" << tableName << "]" << " WHERE id < 3"
+  #puts(sql) #debug
+  return sql
+end
+#-----------------------------------------------------------------------------
+#Converts a table from SQL to a hash for easy entry into CouchDB. 
+def tableConvert(tableName, table)
   dbTableH = Hash.new
+  records = Array.new
   i = 0
   
-  fieldNames.each do
-    |field|
-    dbTableH[field] = rows.map(fieldNames[i])
-    i = i + 1
+  table.each do
+    |row|
+    records[i] = row
+    i += 1
   end
+  dbTableH[tableName] = records
   
   return dbTableH
 end
 #-----------------------------------------------------------------------------
 
 # Connect to MS Access DB
-inf = File.open("SQLlist.txt", "r")
+inf = File.open("TableListSmall.txt", "r")
 dbPath = inf.readline
 puts("Opening file...\n", dbPath) #console feedback
 metdb = AccessDb.new(dbPath)
 metdb.open
 
 # Query Access DB
-sqlLines = inf.readlines  #read querys from file
-sqlLines.delete("\n")     #remove newline characters
+tableLines = inf.readlines  #read querys from file
+tableLines.each {|str| str.delete!("\n")}  #remove newline characters
+#print(tblLines, "\n") # debug
+#tblLines2 = tblLines.delete("\n") #remove newline characters
+#puts(tblLines) # debug
+#print(tblLines2, "\n") # debug
 
 #outf = File.new("metTestOut.txt", "w")
 
 # Create CouchDB
-#metCouch = CouchRest.database!('methow-db')
+metCouch = CouchRest.database!('methow-db')
 
-sqlLines.each{|sql|
+tableLines.each{|tableName|
+  #puts("$ Processing... ", tblName) #console feedback
+  sql = makeQueryTableAll(tableName)
   puts("$ Processing... ", sql) #console feedback
-  metdb.query(sql)            #Get SQL query
+  metdb.query(sql)              #Get SQL query
   #print(sql) #debug
-  fieldNames = metdb.fields   #Get SQL fields (just the fields)
-  #puts("Field Names", fieldNames)  # debug
-  rows = metdb.dataset           #Get the Access DB rows (all the rows, no fields)
+  #fieldNames = metdb.fields    #Get SQL fields (just the fields)
+  #puts("Field Names", fieldNames) # debug
+  table = metdb.data            #Get the Access DB table
   #puts("Rows", rows) # debug
-  dbTable = tableConvert(fieldNames, rows)  #Convert to hash for entry into CouchDB
+  dbTable = tableConvert(tableName, table)  #Convert to hash for entry into CouchDB
   puts("*** dbTable ***", dbTable) #debug
-  #response = metCouch.save_doc(dbTable)
+  response = metCouch.save_doc(dbTable)
+  doc = metCouch.get(response['id'])
+  puts("doc", doc)
   #writeTable(outf, metdb)
 }
+puts("$ Finished processing.")
 
 inf.close
 #outf.close
